@@ -15,8 +15,8 @@ public struct GeoLocation {
 
     public var twoDegreeBoundingBox: BoundingBox {
         .init(
-            lowerLeft: .init(lat: min(lat - 1.0, -90.0), lon: min(lon - 1.0, -180.0)),
-            upperRight: .init(lat: max(lat + 1.0, 90.0), lon: max(lon + 1.0, 180.0))
+            lowerLeft: .init(lat: max(lat - 1.0, -90.0), lon: max(lon - 1.0, -180.0)),
+            upperRight: .init(lat: min(lat + 1.0, 90.0), lon: min(lon + 1.0, 180.0))
         )
     }
 }
@@ -67,7 +67,7 @@ enum OpenSkyError: Error, CustomStringConvertible {
 
 struct API {
     static func fetch(session: URLSession, url: URL) -> AnyPublisher<Data, OpenSkyError> {
-        let publisher = session.dataTaskPublisher(for: url)
+        session.dataTaskPublisher(for: url)
             .tryMap { (data: Data, response: URLResponse) -> Data in
                 guard let httpResponse = response as? HTTPURLResponse else {
                     throw OpenSkyError.invalidURLResponse(response)
@@ -87,7 +87,13 @@ struct API {
                 return error
             }
             .eraseToAnyPublisher()
-        return publisher
+    }
+
+    static func fetch(session: URLSession, boundingBox: BoundingBox) -> AnyPublisher<AircraftStateBatch, OpenSkyNetworkError> {
+        fetch(session: session, url: boundingBox.openskyUrl)
+            .decode(type: AircraftStateBatch.self, decoder: JSONDecoder())
+            .mapError { OpenSkyNetworkError.decodingError($0) }
+            .eraseToAnyPublisher()
     }
 }
 
