@@ -36,7 +36,8 @@ let package = Package(
         ),
         .testTarget(
             name: "OpenSkyNetworkTests",
-            dependencies: ["OpenSkyNetwork"]
+            dependencies: ["OpenSkyNetwork"],
+            resources: [.process("Resources")]
         ),
     ]
 )

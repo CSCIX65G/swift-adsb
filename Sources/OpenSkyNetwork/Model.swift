@@ -29,46 +29,96 @@ spi             boolean Whether flight status indicates special purpose indicato
 position_source int     Origin of this state’s position: 0 = ADS-B, 1 = ASTERIX, 2 = MLAT
  */
 
-struct RawAircraftState {
-    let icao24: String
-    let callsign: String?
-    let origin_country: String
-    let time_position: Int?
-    let last_contact: Int
-    let longitude: Double?
-    let latitude: Double?
-    let baro_altitude: Double?
-    let on_ground: Bool
-    let velocity: Double?
-    let true_track: Double?
-    let vertical_rate: Double?
-    let sensors: [Int]?
-    let geo_altitude: Double?
-    let squawk: String?
-    let spi: Bool
-    let position_source: Int
+public struct RawAircraftState {
+    public let icao24: String
+    public let callsign: String?
+    public let origin_country: String
+    public let time_position: Int?
+    public let last_contact: Int
+    public let longitude: Double?
+    public let latitude: Double?
+    public let baro_altitude: Double?
+    public let on_ground: Bool
+    public let velocity: Double?
+    public let true_track: Double?
+    public let vertical_rate: Double?
+    public let sensors: [Int]?
+    public let geo_altitude: Double?
+    public let squawk: String?
+    public let spi: Bool
+    public let position_source: Int
 }
 
-struct AircraftState {
-    let icao: String
-    let callSign: String?
-    let originCountry: String
-    let timeStamp: Int?
-    let lastContact: Int
-    let lon: Double?
-    let lat: Double?
-    let barometricAltitude: Double?
-    let onGround: Bool
-    let velocity: Double?
-    let trueTrack: Double?
-    let ascentRate: Double?
-    let sensors: [Int]?
-    let geometricAltitude: Double?
-    let squawk: String?
-    let specialPurposeIndicator: Bool
-    let positionSource: Int
+extension RawAircraftState: Decodable {
+    public init(from decoder: Decoder) throws {
+        var container = try decoder.unkeyedContainer()
+        icao24 = try container.decode(String.self)
+        callsign = try container.decode(String?.self)
+        origin_country = try container.decode(String.self)
+        time_position = try container.decode(Int?.self)
+        last_contact = try container.decode(Int.self)
+        longitude = try container.decode(Double?.self)
+        latitude = try container.decode(Double?.self)
+        baro_altitude = try container.decode(Double?.self)
+        on_ground = try container.decode(Bool.self)
+        velocity = try container.decode(Double?.self)
+        true_track = try container.decode(Double?.self)
+        vertical_rate = try container.decode(Double?.self)
+        sensors = try container.decode([Int]?.self)
+        geo_altitude = try container.decode(Double?.self)
+        squawk = try container.decode(String?.self)
+        spi = try container.decode(Bool.self)
+        position_source = try container.decode(Int.self)
+    }
+
+    public var isValid: Bool {
+        guard .some(callsign) == callsign,
+              .some(time_position) == time_position,
+              .some(longitude) == longitude,
+              .some(latitude) == latitude,
+              .some(baro_altitude) == baro_altitude,
+              .some(velocity) == velocity,
+              .some(true_track) == true_track,
+              .some(vertical_rate) == vertical_rate,
+              .some(sensors) == sensors,
+              .some(geo_altitude) == geo_altitude,
+              .some(position_source) == position_source
+        else { return false }
+        return true
+    }
+}
+
+public struct AircraftState {
+    public let icao: String
+    public let callSign: String
+    public let originCountry: String
+    public let timeStamp: Int
+    public let lon: Double
+    public let lat: Double
+    public let barometricAltitude: Double
+    public let onGround: Bool
+    public let velocity: Double
+    public let trueTrack: Double
+    public let ascentRate: Double
+    public let geometricAltitude: Double
+
+    public init?(from raw: RawAircraftState) {
+        guard raw.isValid else { return nil }
+        icao = raw.icao24
+        callSign = raw.callsign!
+        originCountry = raw.origin_country
+        timeStamp = raw.time_position!
+        lon = raw.longitude!
+        lat = raw.latitude!
+        barometricAltitude = raw.baro_altitude!
+        onGround = raw.on_ground
+        velocity = raw.velocity!
+        trueTrack = raw.true_track!
+        ascentRate = raw.vertical_rate!
+        geometricAltitude = raw.geo_altitude!
+    }
 }
 
 extension AircraftState: Codable, Identifiable {
-    var id: String { "\(icao):\(timeStamp ?? Int.max)" }
+    public var id: String { "\(icao):\(timeStamp)" }
 }

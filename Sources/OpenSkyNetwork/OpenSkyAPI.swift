@@ -15,8 +15,8 @@ public struct GeoLocation {
 
     public var twoDegreeBoundingBox: BoundingBox {
         .init(
-            lowerLeft: .init(lat: min(lat - 1.0, -90.0), lon: min(lon - 1.0, -180.0)),
-            upperRight: .init(lat: max(lat + 1.0, 90.0), lon: max(lon + 1.0, 180.0))
+            lowerLeft: .init(lat: max(lat - 1.0, -90.0), lon: max(lon - 1.0, -180.0)),
+            upperRight: .init(lat: min(lat + 1.0, 90.0), lon: min(lon + 1.0, 180.0))
         )
     }
 }
