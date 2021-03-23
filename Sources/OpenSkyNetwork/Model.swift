@@ -29,6 +29,10 @@ spi             boolean Whether flight status indicates special purpose indicato
 position_source int     Origin of this state’s position: 0 = ADS-B, 1 = ASTERIX, 2 = MLAT
  */
 
+enum OpenSkyNetworkError: Error {
+    case decodingError(Error)
+}
+
 public struct RawAircraftState {
     public let icao24: String
     public let callsign: String?
@@ -92,33 +96,52 @@ public struct AircraftState {
     public let icao: String
     public let callSign: String
     public let originCountry: String
-    public let timeStamp: Int
+    public let timeStamp: Date
     public let lon: Double
     public let lat: Double
-    public let barometricAltitude: Double
     public let onGround: Bool
     public let velocity: Double
     public let trueTrack: Double
-    public let ascentRate: Double
-    public let geometricAltitude: Double
+    public let ascentRate: Double?
+    public let altitude: Double?
 
     public init?(from raw: RawAircraftState) {
         guard raw.isValid else { return nil }
         icao = raw.icao24
         callSign = raw.callsign!
         originCountry = raw.origin_country
-        timeStamp = raw.time_position!
+        timeStamp = Date(timeIntervalSince1970: TimeInterval(raw.time_position!))
         lon = raw.longitude!
         lat = raw.latitude!
-        barometricAltitude = raw.baro_altitude!
         onGround = raw.on_ground
         velocity = raw.velocity!
         trueTrack = raw.true_track!
-        ascentRate = raw.vertical_rate!
-        geometricAltitude = raw.geo_altitude!
+        ascentRate = raw.vertical_rate
+        altitude = raw.geo_altitude ?? raw.baro_altitude
     }
 }
 
 extension AircraftState: Codable, Identifiable {
     public var id: String { "\(icao):\(timeStamp)" }
+}
+
+struct AircraftStateBatch {
+    public var timeStamp: Date
+    public var aircraftStates: [AircraftState]
+}
+
+extension AircraftStateBatch: Decodable {
+    enum CodingKeys: CodingKey {
+        case time
+        case states
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let time = try container.decode(Int.self, forKey: .time)
+        let rawStates = try container.decode([RawAircraftState].self, forKey: .states)
+
+        self.timeStamp = Date(timeIntervalSince1970: TimeInterval(time))
+        self.aircraftStates = rawStates.compactMap(AircraftState.init)
+    }
 }
