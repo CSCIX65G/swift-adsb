@@ -1,3 +1,3 @@
-struct swift_adsb {
-    var text = "Hello, World!"
+struct SwiftADSB {
+    static var version = "0.0.1"
 }

@@ -8,10 +8,10 @@
 import Foundation
 
 /*:
- Model of the API from: https://opensky-network.org/apidoc/rest.html
+ ### Model of the API from: https://opensky-network.org/apidoc/rest.html
 
 icao24          string  Unique ICAO 24-bit address of the transponder in hex string representation.
-callsign        string  Callsign of the vehicle (8 chars). Can be null if no callsign has been ved.
+callsign        string  Callsign of the vehicle (8 chars). Can be null if no callsign has been received.
 origin_country  string  Country name inferred from the ICAO 24-bit address.
 time_position   int     Unix timestamp (seconds) for the last position update. Can be null if no ion report was  eived by Op ky within the past 15s.
 last_contact    int     Unix timestamp (seconds) for the last update in general.

@@ -22,8 +22,6 @@ let package = Package(
         .package(url: "git@github.com:apple/swift-log.git", .upToNextMajor(from: "1.4.2"))
     ],
     targets: [
-        // Targets are the basic building blocks of a package. A target can define a module or a test suite.
-        // Targets can depend on other targets in this package, and on products in packages this package depends on.
         .target(
             name: "swift-adsb",
             dependencies: [
@@ -32,11 +30,9 @@ let package = Package(
         ),
         .target(
             name: "OpenSkyNetwork",
-            dependencies: [ ]
-        ),
-        .testTarget(
-            name: "swift-adsbTests",
-            dependencies: ["swift-adsb"]
+            dependencies: [
+                .product(name: "Logging", package: "swift-log")
+            ]
         ),
         .testTarget(
             name: "OpenSkyNetworkTests",

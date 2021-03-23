@@ -15,8 +15,8 @@ public struct GeoLocation {
 
     public var twoDegreeBoundingBox: BoundingBox {
         .init(
-            lowerLeft: .init(lat: lat - 1.0, lon: lon - 1.0),
-            upperRight: .init(lat: lat + 1.0, lon: lon + 1.0)
+            lowerLeft: .init(lat: min(lat - 1.0, -90.0), lon: min(lon - 1.0, -180.0)),
+            upperRight: .init(lat: max(lat + 1.0, 90.0), lon: max(lon + 1.0, 180.0))
         )
     }
 }
@@ -25,16 +25,18 @@ public struct BoundingBox {
     public let lowerLeft: GeoLocation
     public let upperRight: GeoLocation
     public var openskyUrl: URL {
-        .init(
-            string:
-                "https://rvsrvs:Asdfghj1$@opensky-network.org/api/states/all?lamin= \(lowerLeft.lat)&lomin=\(lowerLeft.lon)&lamax=\(upperRight.lat)&lomax=\(upperRight.lon)"
-        )!
+        let lllat = "\(lowerLeft.lat)"
+        let lllon = "\(lowerLeft.lon)"
+        let urlat = "\(upperRight.lat)"
+        let urlon = "\(upperRight.lon)"
+        let urlString = "https://opensky-network.org/api/states/all?lamin=\(lllat)&lomin=\(lllon)&lamax=\(urlat)&lomax=\(urlon)"
+        return .init(string: urlString)!
     }
 }
 
 public struct Locations {
     public static var bna: GeoLocation = .init(lat: 36.131687, lon: -86.668823)
-    public static var dulles: GeoLocation = .init(lat: 38.9400586, lon: -77.4684582)
+    public static var iad: GeoLocation = .init(lat: 38.9400586, lon: -77.4684582)
 }
 
 enum OpenSkyError: Error, CustomStringConvertible {
@@ -63,34 +65,30 @@ enum OpenSkyError: Error, CustomStringConvertible {
     }
 }
 
-let session = URLSession(
-    configuration: URLSessionConfiguration.default,
-    delegate: nil,
-    delegateQueue: nil
-)
-
-func fetch(url: URL) -> AnyPublisher<Data, OpenSkyError> {
-    let publisher = session.dataTaskPublisher(for: url)
-        .tryMap { (data: Data, response: URLResponse) -> Data in
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw OpenSkyError.invalidURLResponse(response)
+struct API {
+    static func fetch(session: URLSession, url: URL) -> AnyPublisher<Data, OpenSkyError> {
+        let publisher = session.dataTaskPublisher(for: url)
+            .tryMap { (data: Data, response: URLResponse) -> Data in
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    throw OpenSkyError.invalidURLResponse(response)
+                }
+                guard httpResponse.statusCode / 100 == 2 else {
+                    throw OpenSkyError.invalidHTTPURLResponse(httpResponse.statusCode)
+                }
+                guard data.count > 0 else {
+                    throw OpenSkyError.noData
+                }
+                return data
             }
-            guard httpResponse.statusCode / 100 == 2 else {
-                throw OpenSkyError.invalidHTTPURLResponse(httpResponse.statusCode)
+            .mapError { error -> OpenSkyError in
+                guard let error = error as? OpenSkyError else {
+                    return OpenSkyError.networkError(error)
+                }
+                return error
             }
-            guard data.count > 0 else {
-                throw OpenSkyError.noData
-            }
-            return data
-        }
-        .mapError { error -> OpenSkyError in
-            guard let error = error as? OpenSkyError else {
-                return OpenSkyError.networkError(error)
-            }
-            return error
-        }
-        .eraseToAnyPublisher()
-    return publisher
+            .eraseToAnyPublisher()
+        return publisher
+    }
 }
 
 //public struct API {
