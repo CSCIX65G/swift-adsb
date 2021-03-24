@@ -1,29 +1,23 @@
 //
-//  OpenSkyNetworkTests.swift
+//  ParsingTests.swift
 //  
 //
-//  Created by Van Simmons on 3/22/21.
+//  Created by Van Simmons on 3/24/21.
 //
 
 import Foundation
 import XCTest
 @testable import OpenSkyNetwork
 
-final class OpenSkyNetworkTests: XCTestCase {
+final class ParsingTests: XCTestCase {
     static var allTests = [
         ("testSingleSquawkDecode", testSingleSquawkDecode),
-        ("testApiCall", testApiCall)
+        ("testApiParsing", testApiParsing)
     ]
 
     static var resourceBundle: Bundle = Bundle.module
     static var singleAircraftPath: String!
     static var bnaPath: String!
-
-    let session = URLSession(
-        configuration: URLSessionConfiguration.default,
-        delegate: nil,
-        delegateQueue: nil
-    )
 
     override class func setUp() {
         singleAircraftPath = resourceBundle.path(
@@ -34,7 +28,7 @@ final class OpenSkyNetworkTests: XCTestCase {
         bnaPath = resourceBundle.path(
             forResource: "bna",
             ofType: "json"
-        ) 
+        )
     }
 
     override func tearDownWithError() throws { }
@@ -94,27 +88,5 @@ final class OpenSkyNetworkTests: XCTestCase {
 
         let batch = try! JSONDecoder().decode(AircraftStateBatch.self, from: data)
         XCTAssertEqual(batch.aircraftStates.count, 51, "Incomplete parse")
-    }
-
-    func testApiCall() {
-        let expectation = XCTestExpectation(description: "ApiCall")
-        let cancellable = API.fetch(session: session, boundingBox: Locations.bna.twoDegreeBoundingBox)
-            .sink { completion in
-                switch completion {
-                    case .finished:
-                        expectation.fulfill()
-                    case .failure(let failure):
-                        XCTFail("Failed with: \(failure)")
-                }
-            } receiveValue: { data in
-                print("Received records on \(data.aircraftStates.count) aircraft")
-                expectation.fulfill()
-            }
-        let result = XCTWaiter.wait(for: [expectation], timeout: 10.0)
-        guard result == .completed else {
-            cancellable.cancel()
-            XCTFail("Timed out")
-            return
-        }
     }
 }

@@ -9,21 +9,7 @@ import Logging
 import Combine
 import Foundation
 
-public struct GeoLocation {
-    public let lat: Double
-    public let lon: Double
-
-    public var twoDegreeBoundingBox: BoundingBox {
-        .init(
-            lowerLeft: .init(lat: max(lat - 1.0, -90.0), lon: max(lon - 1.0, -180.0)),
-            upperRight: .init(lat: min(lat + 1.0, 90.0), lon: min(lon + 1.0, 180.0))
-        )
-    }
-}
-
-public struct BoundingBox {
-    public let lowerLeft: GeoLocation
-    public let upperRight: GeoLocation
+extension GeoBoundingBox {
     public var openskyUrl: URL {
         let lllat = "\(lowerLeft.lat)"
         let lllon = "\(lowerLeft.lon)"
@@ -34,20 +20,16 @@ public struct BoundingBox {
     }
 }
 
-public struct Locations {
-    public static var bna: GeoLocation = .init(lat: 36.131687, lon: -86.668823)
-    public static var iad: GeoLocation = .init(lat: 38.9400586, lon: -77.4684582)
-}
-
-enum OpenSkyError: Error, CustomStringConvertible {
+public enum APIError: Error, CustomStringConvertible {
     case networkError(Error)
     case invalidURLString(String)
     case emptyURLResponse
     case invalidURLResponse(URLResponse)
     case invalidHTTPURLResponse(Int)
     case noData
+    case decodingError(Error)
 
-    var description: String {
+    public var description: String {
         switch self {
             case let .networkError(error):
                 return "Error: FutureError.networkError(\(error))"
@@ -61,42 +43,42 @@ enum OpenSkyError: Error, CustomStringConvertible {
                 return "Error: Invalid URL Response: \(code)"
             case .noData:
                 return "Error: No data returned from URL"
+            case .decodingError(let error):
+                return "Error decoding: \(error)"
         }
     }
 }
 
-struct API {
-    static func fetch(session: URLSession, url: URL) -> AnyPublisher<Data, OpenSkyError> {
+public struct API {
+    static let decoder = JSONDecoder()
+
+    static func fetch(session: URLSession, url: URL) -> AnyPublisher<Data, APIError> {
         session.dataTaskPublisher(for: url)
             .tryMap { (data: Data, response: URLResponse) -> Data in
                 guard let httpResponse = response as? HTTPURLResponse else {
-                    throw OpenSkyError.invalidURLResponse(response)
+                    throw APIError.invalidURLResponse(response)
                 }
                 guard httpResponse.statusCode / 100 == 2 else {
-                    throw OpenSkyError.invalidHTTPURLResponse(httpResponse.statusCode)
+                    throw APIError.invalidHTTPURLResponse(httpResponse.statusCode)
                 }
                 guard data.count > 0 else {
-                    throw OpenSkyError.noData
+                    throw APIError.noData
                 }
                 return data
             }
-            .mapError { error -> OpenSkyError in
-                guard let error = error as? OpenSkyError else {
-                    return OpenSkyError.networkError(error)
+            .mapError { error -> APIError in
+                guard let error = error as? APIError else {
+                    return APIError.networkError(error)
                 }
                 return error
             }
             .eraseToAnyPublisher()
     }
 
-    static func fetch(session: URLSession, boundingBox: BoundingBox) -> AnyPublisher<AircraftStateBatch, OpenSkyNetworkError> {
+    public static func fetch(session: URLSession, boundingBox: GeoBoundingBox) -> AnyPublisher<AircraftStateBatch, APIError> {
         fetch(session: session, url: boundingBox.openskyUrl)
-            .decode(type: AircraftStateBatch.self, decoder: JSONDecoder())
-            .mapError { OpenSkyNetworkError.decodingError($0) }
+            .decode(type: AircraftStateBatch.self, decoder: decoder)
+            .mapError { APIError.decodingError($0) }
             .eraseToAnyPublisher()
     }
 }
-
-//public struct API {
-//    public static func //publisher(for boundingBox: BoundingBox)
-//}

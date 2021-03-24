@@ -29,10 +29,6 @@ spi             boolean Whether flight status indicates special purpose indicato
 position_source int     Origin of this state’s position: 0 = ADS-B, 1 = ASTERIX, 2 = MLAT
  */
 
-enum OpenSkyNetworkError: Error {
-    case decodingError(Error)
-}
-
 public struct RawAircraftState {
     public let icao24: String
     public let callsign: String?
@@ -125,7 +121,7 @@ extension AircraftState: Codable, Identifiable {
     public var id: String { "\(icao):\(timeStamp)" }
 }
 
-struct AircraftStateBatch {
+public struct AircraftStateBatch {
     public var timeStamp: Date
     public var aircraftStates: [AircraftState]
 }
